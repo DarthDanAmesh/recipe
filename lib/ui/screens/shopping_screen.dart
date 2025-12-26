@@ -1,6 +1,9 @@
+// shopping_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/app_coordinator.dart';
 import '../../models/models.dart';
 
@@ -61,7 +64,19 @@ class _ShoppingScreenState extends State<ShoppingScreen> {
                       ],
                     ),
                     onTap: () {
-                      // TODO: Implement sharing
+                      // Generate a formatted string of the shopping list
+                      final buffer = StringBuffer('My Shopping List:\n');
+                      
+                      for (var item in coordinator.shoppingList) {
+                        final check = item.isPurchased ? '✅' : '⬜';
+                        final quantity = item.quantity > 0 
+                            ? ' (${item.quantity} ${item.unit})' 
+                            : '';
+                        buffer.writeln('$check ${item.name}$quantity');
+                      }
+                      
+                      // Share the content
+                      Share.share(buffer.toString().trim());
                     },
                   ),
                 ],
@@ -342,8 +357,18 @@ class _NearbyStoresCard extends StatelessWidget {
               ),
               trailing: IconButton(
                 icon: const Icon(Icons.directions),
-                onPressed: () {
-                  // TODO: Open maps
+                onPressed: () async {
+                  // Create a search query for Google Maps
+                  final query = Uri.encodeComponent(store.name);
+                  final url = 'https://www.google.com/maps/search/?api=1&query=$query';
+                  
+                  // Check if launch is possible and launch
+                  if (await canLaunchUrl(Uri.parse(url))) {
+                    await launchUrl(
+                      Uri.parse(url),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  }
                 },
               ),
             );

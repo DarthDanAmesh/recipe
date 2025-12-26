@@ -1,3 +1,4 @@
+// inventory_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -12,9 +13,12 @@ class InventoryScreen extends StatefulWidget {
   State<InventoryScreen> createState() => _InventoryScreenState();
 }
 
+enum _SortOption { name, expiry, category }
+
 class _InventoryScreenState extends State<InventoryScreen> {
   String _selectedCategory = 'All';
   String _searchQuery = '';
+  _SortOption? _currentSortOption;
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +61,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               .toList()
             ..sort()];
 
-          final filtered = _filterInventory(coordinator.inventory);
+          final filtered = _processInventory(coordinator.inventory);
 
           return Column(
             children: [
@@ -143,21 +147,47 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  List<Ingredient> _filterInventory(List<Ingredient> inventory) {
-    var filtered = inventory;
+  List<Ingredient> _processInventory(List<Ingredient> inventory) {
+    var processed = inventory;
 
+    // Apply Category Filter
     if (_selectedCategory != 'All') {
-      filtered = filtered.where((item) => item.category == _selectedCategory).toList();
+      processed = processed.where((item) => item.category == _selectedCategory).toList();
     }
 
+    // Apply Search Filter
     if (_searchQuery.isNotEmpty) {
-      filtered = filtered
+      processed = processed
           .where((item) =>
               item.name.toLowerCase().contains(_searchQuery.toLowerCase()))
           .toList();
     }
 
-    return filtered;
+    // Apply Sorting
+    if (_currentSortOption != null) {
+      switch (_currentSortOption) {
+        case _SortOption.name:
+          processed.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+          break;
+        case _SortOption.expiry:
+          processed.sort((a, b) {
+            final dateA = a.expiryDate;
+            final dateB = b.expiryDate;
+            if (dateA == null && dateB == null) return 0;
+            if (dateA == null) return 1; // Items without expiry go to the end
+            if (dateB == null) return -1;
+            return dateA.compareTo(dateB); // Soonest expiring first
+          });
+          break;
+        case _SortOption.category:
+          processed.sort((a, b) => a.category.toLowerCase().compareTo(b.category.toLowerCase()));
+          break;
+        case null:
+          break;
+      }
+    }
+
+    return processed;
   }
 
   void _showExpiringItems(BuildContext context, AppCoordinator coordinator) {
@@ -212,7 +242,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               title: const Text('Sort by Name'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement sorting
+                setState(() => _currentSortOption = _SortOption.name);
               },
             ),
             ListTile(
@@ -220,7 +250,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               title: const Text('Sort by Expiry Date'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement sorting
+                setState(() => _currentSortOption = _SortOption.expiry);
               },
             ),
             ListTile(
@@ -228,7 +258,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               title: const Text('Sort by Category'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Implement sorting
+                setState(() => _currentSortOption = _SortOption.category);
               },
             ),
           ],
